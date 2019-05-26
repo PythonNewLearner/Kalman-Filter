@@ -9,14 +9,154 @@ s='AMZN'
 df=pd.DataFrame()
 df[s]=web.DataReader(s,'yahoo',start=start,end=end)['Close']
 
+class KalmanFilter(object):
+    def __init__(self,a,b,c,x,p,q,r):
+        self.a=a
+        self.b=b
+        self.c=c
+        self.current_state_estimate=x
+        self.current_prob_estimate=p
+        self.q=q
+        self.r=r
 
-def Kalman_filter():
-    delta=0.001
+    def current_state(self):
+        return self.current_state_estimate
 
+    def process(self,control_input,measurement):
+        #prediction
+        predicted_state_estimate=self.a*self.current_state_estimate+self.b*control_input
+        predicted_prob_estimate=(self.a*self.current_prob_estimate)*self.a+self.q
 
+        #obsservation
+        observation=measurement-self.c*predicted_state_estimate
+        observation_cov=self.c*predicted_prob_estimate*self.c+self.r
 
+        #update
+        kalman_gain=predicted_prob_estimate*self.c/float(observation_cov)
+        self.current_state_estimate=predicted_state_estimate+kalman_gain*observation
 
-print(df)
+        self.current_prob_estimate=(1-kalman_gain*self.c)*predicted_prob_estimate
 
-plt.plot(df)
+a=1
+b=0
+c=1
+q=0.005
+r=1
+x=1000
+p=1
+
+filter=KalmanFilter(a,b,c,x,p,q,r)
+predictions=[]
+for data in df.values:
+    filter.process(0,data)
+    predictions.append(filter.current_state())
+
+predictions=[float(i) for i in predictions]
+print(predictions)
+
+plt.plot(df.values)
+plt.plot(predictions)
 plt.show();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# def Kalman_filter(a,b,c,x,p,q,r,control_input,meansurement):
+#     global current_state_estimate,predicted_state_estimate
+#     current_state_estimate=x
+#     current_prob_estimate=p
+#
+#     #prediction
+#     predicted_state_estimate=a*current_state_estimate+b*control_input
+#     predicted_prob_estimate=(a*current_prob_estimate)*a+q
+#
+#     #observation
+#     inno=meansurement-c*predicted_state_estimate
+#     inno_cov=c*predicted_prob_estimate*c+r
+#
+#     #update
+#     kalman_gain=predicted_prob_estimate*c*1/float(inno_cov)
+#     current_state_estimate=predicted_state_estimate+kalman_gain*inno
+#
+#     current_prob_estimate=(1-kalman_gain*c)*predicted_prob_estimate
+#
+# predictions=[]
+# estimate=[]
+# for data in df.values:
+#     Kalman_filter(a=1,b=0,c=1,q=0.001,r=1,x=1000,p=1,control_input=0,meansurement=data)
+#     predictions.append(current_state_estimate)
+#     estimate.append(predicted_state_estimate)
+# predictions=[float(i) for i in predictions]
+# estimate=[float(i) for i in estimate]
+#
+# print(df.values)
+# print(predictions)
+# print(estimate)
+#
+# plt.plot(df.values)
+# plt.plot(predictions)
+# plt.plot(estimate)
+# plt.show();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def kf():
+    delta = 0.0001
+    Vw = delta / (1 - delta)
+    Ve = 0.001
+
+    P = 0
+    R = 0
+
+    for i in range(len(df)):
+        pass
+
+
+
