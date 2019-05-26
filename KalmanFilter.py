@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
-start=pd.to_datetime('2015-6-1')
+EURUSD=pd.read_csv('EURUSD30.csv')
+start=pd.to_datetime('2014-6-1')
 end=pd.to_datetime('2019-5-25')
 s='AMZN'
 df=pd.DataFrame()
