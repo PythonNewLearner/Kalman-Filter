@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
-EURUSD=pd.read_csv('EURUSD30.csv')
+EURUSD=pd.read_csv('EURUSD30.csv',index_col=0,parse_dates=True)['Close']
+print(EURUSD)
 start=pd.to_datetime('2014-6-1')
 end=pd.to_datetime('2019-5-25')
 s='AMZN'
@@ -56,18 +57,18 @@ class KalmanFilter(object):
         self.current_prob_estimate=(1-kalman_gain*self.c)*predicted_prob_estimate
 
 a=1
-b=2
+b=0
 c=1
-q=0.001
+q=0.00001
 r=1
-x=500
+x=1
 p=1
 
 filter=KalmanFilter(a,b,c,x,p,q,r)
 predictions=[]
 estimate=[]
 observe=[]
-for data in df.values:
+for data in EURUSD:
     filter.process(0,data)
     predictions.append(filter.current_state())
     estimate.append(filter.predicted_state())
@@ -78,10 +79,10 @@ estimate=[float(i) for i in estimate]
 observe=[float(i) for i in observe]
 print(predictions)
 
-plt.plot(df.values)
+plt.plot(EURUSD.values)
 plt.plot(predictions)
-plt.plot(estimate)
-plt.plot(observe)
+#plt.plot(estimate)
+#plt.plot(observe)
 plt.show();
 
 
