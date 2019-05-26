@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun May 26 16:36:01 2019
+Created on Sun May 26 18:30:01 2019
 
 @author: baichen
 """
@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
-start=pd.to_datetime('2017-6-1')
+start=pd.to_datetime('2015-6-1')
 end=pd.to_datetime('2019-5-25')
 s='AMZN'
 df=pd.DataFrame()
@@ -23,8 +23,8 @@ class KalmanFilter(object):
         self.c=c
         self.current_state_estimate=x
         self.current_prob_estimate=p
-        self.q=q
-        self.r=r
+        self.q=q   #process covariace
+        self.r=r    #measurement covariance
         self.predicted_state_estimate=0
         self.observation=0
 
@@ -44,7 +44,7 @@ class KalmanFilter(object):
         self.predicted_state_estimate=self.a*self.current_state_estimate+self.b*control_input
         predicted_prob_estimate=(self.a*self.current_prob_estimate)*self.a+self.q
 
-        #obsservation
+        #observation
         self.observation=measurement-self.c*self.predicted_state_estimate
         observation_cov=self.c*predicted_prob_estimate*self.c+self.r
 
@@ -59,7 +59,7 @@ b=2
 c=1
 q=0.001
 r=1
-x=1000
+x=500
 p=1
 
 filter=KalmanFilter(a,b,c,x,p,q,r)
