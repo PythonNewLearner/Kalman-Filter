@@ -25,44 +25,62 @@ class KalmanFilter(object):
         self.current_prob_estimate=p
         self.q=q
         self.r=r
+        self.predicted_state_estimate=0
+        self.observation=0
+
+
 
     def current_state(self):
         return self.current_state_estimate
 
+    def predicted_state(self):
+        return self.predicted_state_estimate
+
+    def observe(self):
+        return self.observation
+
     def process(self,control_input,measurement):
         #prediction
-        predicted_state_estimate=self.a*self.current_state_estimate+self.b*control_input
+        self.predicted_state_estimate=self.a*self.current_state_estimate+self.b*control_input
         predicted_prob_estimate=(self.a*self.current_prob_estimate)*self.a+self.q
 
         #obsservation
-        observation=measurement-self.c*predicted_state_estimate
+        self.observation=measurement-self.c*self.predicted_state_estimate
         observation_cov=self.c*predicted_prob_estimate*self.c+self.r
 
         #update
         kalman_gain=predicted_prob_estimate*self.c/float(observation_cov)
-        self.current_state_estimate=predicted_state_estimate+kalman_gain*observation
+        self.current_state_estimate=self.predicted_state_estimate+kalman_gain*self.observation
 
         self.current_prob_estimate=(1-kalman_gain*self.c)*predicted_prob_estimate
 
 a=1
-b=0
+b=2
 c=1
-q=0.005
+q=0.001
 r=1
 x=1000
 p=1
 
 filter=KalmanFilter(a,b,c,x,p,q,r)
 predictions=[]
+estimate=[]
+observe=[]
 for data in df.values:
     filter.process(0,data)
     predictions.append(filter.current_state())
+    estimate.append(filter.predicted_state())
+    observe.append(filter.observe())
 
 predictions=[float(i) for i in predictions]
+estimate=[float(i) for i in estimate]
+observe=[float(i) for i in observe]
 print(predictions)
 
 plt.plot(df.values)
 plt.plot(predictions)
+plt.plot(estimate)
+plt.plot(observe)
 plt.show();
 
 
