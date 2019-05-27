@@ -104,14 +104,14 @@ predicts=[]
 for t in range(len(test)):
 
     #price=np.append(price,EURUSD['Close'].values[i])
-    model=ARIMA(history,order=(5,1,0))
+    model=ARIMA(history,order=(5,2,0))
     model_fit=model.fit(disp=0)
     output=model_fit.forecast()
     yhat=output[0]
     predicts.append(yhat)
     obs=test[t]
     history.append(obs)    #update history data
-    print('predicted=%f, expected=%f' % (yhat, obs))
+    print('%.1f : ARIMA predicted=%f, expected=%f' % (t,yhat, obs))
 
 plt.plot(test)
 plt.plot(predicts,color='red')
