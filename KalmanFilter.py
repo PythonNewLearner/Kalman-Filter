@@ -63,86 +63,101 @@ size = int(len(X) * 0.6)
 train, test = X[0:size], X[size:len(X)]
 
 # acf
-acf1 = acf(train)
-acf1 = pd.DataFrame([acf1]).T
-acf1.plot(kind='bar', figsize=(12, 10))
-plt.show();
+def acf():
+    acf1 = acf(train)
+    acf1 = pd.DataFrame([acf1]).T
+    acf1.plot(kind='bar', figsize=(12, 10))
+    plt.show();
 
 # pacf
-pacf1 = pacf(train)
-pacf1 = pd.DataFrame([pacf1]).T
-pacf1.plot(kind='bar', figsize=(12, 10))
-plt.show();  # AR(1) is concerned
+def pacf():
+    pacf1 = pacf(train)
+    pacf1 = pd.DataFrame([pacf1]).T
+    pacf1.plot(kind='bar', figsize=(12, 10))
+    plt.show();  # AR(1) is concerned
 
 # test 1st differencing acf
-df1 = df.iloc[:size, :]
-df2 = df.iloc[:size, :].shift()
-price_diff = df1['Close'] - df2['Close']
-price_diff = price_diff.dropna()
-acf1_diff = acf(price_diff)
-acf1_diff = pd.DataFrame([acf1_diff]).T
-acf1_diff.plot(kind='bar', figsize=(12, 10))
-plt.show();
+def first_diff():
+    global price_diff
+    df1 = df.iloc[:size, :]
+    df2 = df.iloc[:size, :].shift()
+    price_diff = df1['Close'] - df2['Close']
+    price_diff = price_diff.dropna()
+    acf1_diff = acf(price_diff)
+    acf1_diff = pd.DataFrame([acf1_diff]).T
+    acf1_diff.plot(kind='bar', figsize=(12, 10))
+    plt.show();
 
 # test 1st differencing pacf
-pacf1_diff = pacf(price_diff)
-pacf1_diff = pd.DataFrame([pacf1_diff]).T
-pacf1_diff.plot(kind='bar', figsize=(12, 10))
-plt.show();
+def first_diff_pacf():
+    pacf1_diff = pacf(price_diff)
+    pacf1_diff = pd.DataFrame([pacf1_diff]).T
+    pacf1_diff.plot(kind='bar', figsize=(12, 10))
+    plt.show();
 
 # arima
-price = train
-model = ARIMA(price, order=(0, 1, 0))
-model_fit = model.fit(disp=0)
-print(model_fit.summary())
-pred_arima = model_fit.predict(start=size + 1, end=size + 1, typ='levels')  # predict value at size+1
+def arima_summary():
+    price = train
+    model = ARIMA(price, order=(0, 1, 0))
+    model_fit = model.fit(disp=0)
+    print(model_fit.summary())
+    pred_arima = model_fit.predict(start=size + 1, end=size + 1, typ='levels')  # predict value at size+1
 
 # ARIMA rolling forecast
-history = [x for x in train]
-predicts = []
-for t in range(len(test)):
-    model = ARIMA(history, order=(7, 1, 0))
-    model_fit = model.fit(disp=0)
-    output = model_fit.forecast()
-    yhat = output[0]
-    predicts.append(yhat)
-    obs = test[t]
-    history.append(obs)  # update history data
-    print('%.1f : ARIMA predicted=%f, expected=%f' % (t, yhat, obs))
+def arima():
+    global predicts
+    history = [x for x in train]
+    predicts = []
+    for t in range(len(test)):
+        model = ARIMA(history, order=(7, 1, 0))
+        model_fit = model.fit(disp=0)
+        output = model_fit.forecast()
+        yhat = output[0]
+        predicts.append(yhat)
+        obs = test[t]
+        history.append(obs)  # update history data
+        print('%.1f : ARIMA predicted=%f, expected=%f' % (t, yhat, obs))
 
-plt.figure(figsize=(12, 10))
-plt.plot(test)
-plt.plot(predicts, color='red')
-plt.show();
-print('predict', predicts)
+    plt.figure(figsize=(12, 10))
+    plt.plot(test)
+    plt.plot(predicts, color='red')
+    plt.show();
+    print('predict', predicts)
 
 # kalman filter part
-a = 1
-b = 0
-c = 1
-q = 0.001
-r = 1
-x = 1000
-p = 1
+def kalman_filter():
+    a = 1
+    b = 0
+    c = 1
+    q = 0.001
+    r = 1
+    x = 1000
+    p = 1
 
-filter = KalmanFilter(a, b, c, x, p, q, r)
-predictions = []
-estimate = []
-observe = []
-for data in test:
-    filter.process(0, data)
-    predictions.append(filter.current_state())
-    estimate.append(filter.predicted_state())
-    observe.append(filter.observe())
+    filter = KalmanFilter(a, b, c, x, p, q, r)
+    predictions = []
+    estimate = []
+    observe = []
+    for data in test:
+        filter.process(0, data)
+        predictions.append(filter.current_state())
+        estimate.append(filter.predicted_state())
+        observe.append(filter.observe())
 
-predictions = [float(i) for i in predictions]
-estimate = [float(i) for i in estimate]
-observe = [float(i) for i in observe]
+    predictions = [float(i) for i in predictions]
+    estimate = [float(i) for i in estimate]
+    observe = [float(i) for i in observe]
 
-plt.figure(figsize=(12, 10))
-plt.plot(test)
-plt.plot(predictions)
-plt.plot(predicts)  # this is arima predicts
-# plt.plot(estimate)
-# plt.plot(observe)
-plt.show();
+    plt.figure(figsize=(12, 10))
+    plt.plot(test)
+    plt.plot(predictions)
+    plt.plot(predicts)  # this is arima predicts
+    # plt.plot(estimate)
+    # plt.plot(observe)
+    plt.show();
+
+def main():
+    arima_summary()
+    arima()
+    kalman_filter()
+main()
