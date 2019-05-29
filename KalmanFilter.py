@@ -129,7 +129,7 @@ def kalman_filter(data):
     a = 1
     b = 0
     c = 1
-    q = 0.001
+    q = 0.002
     r = 1
     x = 300
     p = 1
@@ -158,21 +158,38 @@ def kalman_filter(data):
 
     return predictions
 
-def VWAP(window=20):
+def VWAP(df,window=20):
     train,test=df.iloc[:size,:],df.iloc[size:,:]
+
     train['price_vol']=train['Close']*train['Volume']
     train['VWAP']=train['price_vol'].rolling(window).sum()/train['Volume'].rolling(window).sum()
 
     predictions=kalman_filter(train['Close'].values)
     train['kalman']=np.array(predictions)
 
+
     train[['VWAP','Close','kalman']].plot(figsize=(12,10))
+    plt.title('%s Training data'%s)
     plt.show();
     print(train)
 
-def rsi():
-    pass
+def rsi(df,period=14):
+    train, test = df.iloc[:size, :], df.iloc[size:, :]
+    chg=train['Close'].diff(1)
+    gain=chg.mask(chg<0,0)
+    loss=chg.mask(chg>0,0)
+
+    avg_gain=gain.ewm(com=period-1,min_periods=period).mean()
+    avg_loss = loss.ewm(com=period - 1, min_periods=period).mean()
+    rs=abs(avg_gain)/abs(avg_loss)
+    rsi=100-100/(1+rs)
+    print(rsi)
+
+    rsi.plot(figsize=(12,10))
+    plt.show();
+
 def main():
 
-    VWAP()
+    #VWAP(df)
+    rsi(df)
 main()
