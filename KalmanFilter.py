@@ -129,7 +129,7 @@ def kalman_filter(data):
     a = 1
     b = 0
     c = 1
-    q = 0.002
+    q = 0.0005
     r = 1
     x = 300
     p = 1
@@ -147,14 +147,11 @@ def kalman_filter(data):
     predictions = [float(i) for i in predictions]
     estimate = [float(i) for i in estimate]
     observe = [float(i) for i in observe]
-
-    plt.figure(figsize=(12, 10))
-    plt.plot(data)
-    plt.plot(predictions)
-    #plt.plot(predicts)  # this is arima predicts
-    # plt.plot(estimate)
-    # plt.plot(observe)
-    plt.show();
+    #
+    # plt.figure(figsize=(12, 10))
+    # plt.plot(data)
+    # plt.plot(predictions)
+    # plt.show();
 
     return predictions
 
@@ -168,24 +165,35 @@ def VWAP(df,window=20):
     train['kalman']=np.array(predictions)
 
 
-    train[['VWAP','Close','kalman']].plot(figsize=(12,10))
-    plt.title('%s Training data'%s)
-    plt.show();
-    print(train)
+    # train[['VWAP','Close','kalman']].plot(figsize=(12,10))
+    # plt.title('%s Training data'%s)
+    # plt.show();
+    return train[['VWAP','Close','kalman']]
 
-def rsi(df,period=14):
+def rsi(df,rsi_period=20):
     train, test = df.iloc[:size, :], df.iloc[size:, :]
     chg=train['Close'].diff(1)
     gain=chg.mask(chg<0,0)
     loss=chg.mask(chg>0,0)
 
-    avg_gain=gain.ewm(com=period-1,min_periods=period).mean()
-    avg_loss = loss.ewm(com=period - 1, min_periods=period).mean()
+    avg_gain=gain.ewm(com=rsi_period-1,min_periods=rsi_period).mean()
+    avg_loss = loss.ewm(com=rsi_period - 1, min_periods=rsi_period).mean()
     rs=abs(avg_gain)/abs(avg_loss)
     rsi=100-100/(1+rs)
-    print(rsi)
+    train['RSI']=rsi
 
-    rsi.plot(figsize=(12,10))
+    fig=plt.figure(figsize=(12,10))
+
+    ax1=fig.add_subplot(211)
+    plt.plot(VWAP(df))
+
+
+    ax2=fig.add_subplot(212,sharex = ax1)
+    plt.plot(rsi)
+    plt.axhline(y=40,color='r',linestyle='--')
+    plt.axhline(y=70, color='r', linestyle='--')
+    ax1.title.set_text('Price')
+    ax2.title.set_text('RSI')
     plt.show();
 
 def main():
