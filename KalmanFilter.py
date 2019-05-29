@@ -125,21 +125,21 @@ def arima():
     print('predict', predicts)
 
 # kalman filter part
-def kalman_filter():
+def kalman_filter(data):
     a = 1
     b = 0
     c = 1
     q = 0.001
     r = 1
-    x = 1000
+    x = 300
     p = 1
 
     filter = KalmanFilter(a, b, c, x, p, q, r)
     predictions = []
     estimate = []
     observe = []
-    for data in test:
-        filter.process(0, data)
+    for d in data:
+        filter.process(0, d)
         predictions.append(filter.current_state())
         estimate.append(filter.predicted_state())
         observe.append(filter.observe())
@@ -149,15 +149,30 @@ def kalman_filter():
     observe = [float(i) for i in observe]
 
     plt.figure(figsize=(12, 10))
-    plt.plot(test)
+    plt.plot(data)
     plt.plot(predictions)
-    plt.plot(predicts)  # this is arima predicts
+    #plt.plot(predicts)  # this is arima predicts
     # plt.plot(estimate)
     # plt.plot(observe)
     plt.show();
 
+    return predictions
+
+def VWAP(window=20):
+    train,test=df.iloc[:size,:],df.iloc[size:,:]
+    train['price_vol']=train['Close']*train['Volume']
+    train['VWAP']=train['price_vol'].rolling(window).sum()/train['Volume'].rolling(window).sum()
+
+    predictions=kalman_filter(train['Close'].values)
+    train['kalman']=np.array(predictions)
+
+    train[['VWAP','Close','kalman']].plot(figsize=(12,10))
+    plt.show();
+    print(train)
+
+def rsi():
+    pass
 def main():
-    arima_summary()
-    arima()
-    kalman_filter()
+
+    VWAP()
 main()
