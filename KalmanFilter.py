@@ -125,15 +125,7 @@ def arima():
     print('predict', predicts)
 
 # kalman filter part
-def kalman_filter(data):
-    a = 1
-    b = 0
-    c = 1
-    q = 0.0005
-    r = 1
-    x = 300
-    p = 1
-
+def kalman_filter(data,a=1,b=0,c=1,q=0.01,r=1,x=300,p=1):
     filter = KalmanFilter(a, b, c, x, p, q, r)
     predictions = []
     estimate = []
@@ -147,7 +139,7 @@ def kalman_filter(data):
     predictions = [float(i) for i in predictions]
     estimate = [float(i) for i in estimate]
     observe = [float(i) for i in observe]
-    #
+
     # plt.figure(figsize=(12, 10))
     # plt.plot(data)
     # plt.plot(predictions)
@@ -196,8 +188,22 @@ def rsi(df,rsi_period=20):
     ax2.title.set_text('RSI')
     plt.show();
 
+def Cross_MA(df,window1,window2):
+    train, test = df.iloc[:size, :], df.iloc[size:, :]
+    train['MA_%.f'%window1]=train['Close'].rolling(window1).mean()
+    train['MA_%.f' % window2] = train['Close'].rolling(window2).mean()
+
+    train[['Close','MA_%.f'%window1,'MA_%.f'%window2]].plot(figsize=(12,10))
+    plt.show();
+
+def performace():
+    pass
+
+
+
 def main():
 
     #VWAP(df)
-    rsi(df)
+    #rsi(df)
+    Cross_MA(df,15,25)
 main()
