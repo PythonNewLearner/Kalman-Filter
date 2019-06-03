@@ -148,7 +148,9 @@ def kalman_filter(data,a=1,b=0,c=1,q=0.01,r=1,x=300,p=1):
     return predictions
 
 def VWAP(df,window=20):
+
     train,test=df.iloc[:size,:],df.iloc[size:,:]
+
 
     train['price_vol']=train['Close']*train['Volume']
     train['VWAP']=train['price_vol'].rolling(window).sum()/train['Volume'].rolling(window).sum()
@@ -188,7 +190,7 @@ def rsi(df,rsi_period=20):
     ax2.title.set_text('RSI')
     plt.show();
 
-def Cross_MA(df,window1,window2):
+def Cross_MA(df,window1,window2): # window1<window2
     train, test = df.iloc[:size, :], df.iloc[size:, :]
     train['MA_%.f'%window1]=train['Close'].rolling(window1).mean()
     train['MA_%.f' % window2] = train['Close'].rolling(window2).mean()
@@ -196,14 +198,34 @@ def Cross_MA(df,window1,window2):
     train[['Close','MA_%.f'%window1,'MA_%.f'%window2]].plot(figsize=(12,10))
     plt.show();
 
-def performace():
-    pass
+def SMA_train_performace(df,window1=15,window2=25):
+    train, test = df.iloc[:size, :], df.iloc[size:, :]
+    train['Return']=train['Close'].pct_change()
+    train['MA_%.f'%window1]=train['Close'].rolling(window1).mean()
+    train['MA_%.f' % window2] = train['Close'].rolling(window2).mean()
+    train['long']=np.where(train['MA_%.f'%window1]>train['MA_%.f' % window2],1,0)
+    train['short']=np.where(train['MA_%.f'%window1]<train['MA_%.f' % window2],-1,0)
+    train['positions']=train['long']+train['short']
 
+    train['strategy_return']=train['positions'].shift(1)*train['Return']
+    annual_return=train['strategy_return'].mean()*252
+    annual_std=train['strategy_return'].std()*np.sqrt(252)
+    sharpe_ratio=annual_return/annual_std
+    print('Annual return: {:.2f} , Annual std: {:.2f} , Sharpe Ratio: {:.2f}'.format(annual_return,annual_std,sharpe_ratio))
+    #plot
+    ax = train[['Close','MA_%.f'%window1,'MA_%.f' % window2, 'positions']].plot(figsize=(12, 10), secondary_y=['positions'])
+
+    plt.title('{} training data \nSMA trading signal \nsharpe ratio: {:.2f}'.format(s, sharpe_ratio))
+    plt.show();
+    
+def kalman_train_performance():
+    pass
 
 
 def main():
 
     #VWAP(df)
     #rsi(df)
-    Cross_MA(df,15,25)
+    #Cross_MA(df,15,25)
+    SMA_train_performace(df,20,50)
 main()
