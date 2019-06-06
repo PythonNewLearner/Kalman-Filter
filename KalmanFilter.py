@@ -241,10 +241,10 @@ def kalman_train_performance(r1=0.3,r2=3):
     annual_return=train['kf_strategy_return'].mean()*252
     annual_std=train['kf_strategy_return'].std()*np.sqrt(252)
     sharpe_ratio=annual_return/annual_std
-    print('r1:{:.1f} and r2:{:.1f} ~~ Annual return: {:.2f} , Annual std: {:.2f} , Sharpe Ratio: {:.2f}'.
+    print('r1:{:.1f} and r2:{:.1f} ~~ Annual return: {:.6f} , Annual std: {:.6f} , Sharpe Ratio: {:.2f}'.
           format(r1, r2, annual_return, annual_std, sharpe_ratio))
     ax=train[[ 'Close', 'kalman_r1','kalman_r2','kf_positions']].plot(figsize=(12, 10), secondary_y=['kf_positions'])
-    plt.title('{} Kalman Filter training data \nr1= {:.2f}  r2= {:.2f} \nsharpe ratio: {:.2f}'.format(s,r1,r2, sharpe_ratio))
+    plt.title('{} Kalman Filter training data \nr1= {:.1f}  r2= {:.1f} \nsharpe ratio: {:.2f}'.format(s,r1,r2, sharpe_ratio))
     plt.show();
 
 def kalman_train_optimize(r1=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],r2=[1,2,3,4,5]):
