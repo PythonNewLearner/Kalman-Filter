@@ -12,6 +12,7 @@ import pandas as pd
 from statsmodels.tsa.stattools import acf, pacf
 import statsmodels.tsa.stattools as ts
 from statsmodels.tsa.arima_model import ARIMA
+from itertools import combinations
 
 start = pd.to_datetime('2014-6-1')
 end = pd.to_datetime('2019-5-25')
@@ -85,6 +86,7 @@ def first_diff():
     price_diff = price_diff.dropna()
     acf1_diff = acf(price_diff)
     acf1_diff = pd.DataFrame([acf1_diff]).T
+
     acf1_diff.plot(kind='bar', figsize=(12, 10))
     plt.show();
 
@@ -211,21 +213,34 @@ def SMA_train_performace(df,window1=15,window2=25):
     annual_return=train['strategy_return'].mean()*252
     annual_std=train['strategy_return'].std()*np.sqrt(252)
     sharpe_ratio=annual_return/annual_std
-    print('Annual return: {:.2f} , Annual std: {:.2f} , Sharpe Ratio: {:.2f}'.format(annual_return,annual_std,sharpe_ratio))
+    print('SMA {} and SMA {} ~~ Annual return: {:.2f} , Annual std: {:.2f} , Sharpe Ratio: {:.2f}'.
+          format(window1,window2,annual_return,annual_std,sharpe_ratio))
     #plot
     ax = train[['Close','MA_%.f'%window1,'MA_%.f' % window2, 'positions']].plot(figsize=(12, 10), secondary_y=['positions'])
 
     plt.title('{} training data \nSMA trading signal \nsharpe ratio: {:.2f}'.format(s, sharpe_ratio))
     plt.show();
-    
+
+def SMA_train_Optimize(windows=[10,15,20,25,30,40,50,60]):
+    win1_win2=list(combinations(windows,r=2))
+    for win1,win2 in win1_win2:
+        SMA_train_performace(df,win1,win2)
+
 def kalman_train_performance():
-    pass
+    train, test = df.iloc[:size, :], df.iloc[size:, :]
+    predictions=kalman_filter(train['Close'].values)
+    train['kalman']=np.array(predictions)
 
 
+
+    train[[ 'Close', 'kalman']].plot(figsize=(12, 10))
+    plt.show();
 def main():
 
     #VWAP(df)
     #rsi(df)
     #Cross_MA(df,15,25)
-    SMA_train_performace(df,20,50)
+    #SMA_train_performace(df,20,50)
+    #SMA_train_Optimize()
+    kalman_train_performance()
 main()
