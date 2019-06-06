@@ -12,7 +12,7 @@ import pandas as pd
 from statsmodels.tsa.stattools import acf, pacf
 import statsmodels.tsa.stattools as ts
 from statsmodels.tsa.arima_model import ARIMA
-from itertools import combinations
+from itertools import combinations,product
 
 start = pd.to_datetime('2014-6-1')
 end = pd.to_datetime('2019-5-25')
@@ -127,7 +127,7 @@ def arima():
     print('predict', predicts)
 
 # kalman filter part
-def kalman_filter(data,a=1,b=0,c=1,q=0.01,r=1,x=300,p=1):
+def kalman_filter(data,a=1,b=0,c=1,q=0.01,r=1,x=300,p=1):   # try to control r
     filter = KalmanFilter(a, b, c, x, p, q, r)
     predictions = []
     estimate = []
@@ -217,7 +217,6 @@ def SMA_train_performace(df,window1=15,window2=25):
           format(window1,window2,annual_return,annual_std,sharpe_ratio))
     #plot
     ax = train[['Close','MA_%.f'%window1,'MA_%.f' % window2, 'positions']].plot(figsize=(12, 10), secondary_y=['positions'])
-
     plt.title('{} training data \nSMA trading signal \nsharpe ratio: {:.2f}'.format(s, sharpe_ratio))
     plt.show();
 
@@ -226,15 +225,33 @@ def SMA_train_Optimize(windows=[10,15,20,25,30,40,50,60]):
     for win1,win2 in win1_win2:
         SMA_train_performace(df,win1,win2)
 
-def kalman_train_performance():
+def kalman_train_performance(r1=0.3,r2=3):
     train, test = df.iloc[:size, :], df.iloc[size:, :]
-    predictions=kalman_filter(train['Close'].values)
-    train['kalman']=np.array(predictions)
+    train['Return'] = train['Close'].pct_change()
+    predictions1=kalman_filter(train['Close'].values,r=r1)
+    predictions2 = kalman_filter(train['Close'].values, r=r2)
+    train['kalman_r1']=np.array(predictions1)
+    train['kalman_r2'] = np.array(predictions2)
 
+    train['kf_long']=np.where(train['kalman_r1']>train['kalman_r2'],1,0)
+    train['kf_short']=np.where(train['kalman_r1']<train['kalman_r2'],-1,0)
+    train['kf_positions']=train['kf_long']+train['kf_short']
+    train['kf_strategy_return'] = train['kf_positions'].shift(1) * train['Return']
 
-
-    train[[ 'Close', 'kalman']].plot(figsize=(12, 10))
+    annual_return=train['kf_strategy_return'].mean()*252
+    annual_std=train['kf_strategy_return'].std()*np.sqrt(252)
+    sharpe_ratio=annual_return/annual_std
+    print('r1:{:.1f} and r2:{:.1f} ~~ Annual return: {:.2f} , Annual std: {:.2f} , Sharpe Ratio: {:.2f}'.
+          format(r1, r2, annual_return, annual_std, sharpe_ratio))
+    ax=train[[ 'Close', 'kalman_r1','kalman_r2','kf_positions']].plot(figsize=(12, 10), secondary_y=['kf_positions'])
+    plt.title('{} Kalman Filter training data \nr1= {:.2f}  r2= {:.2f} \nsharpe ratio: {:.2f}'.format(s,r1,r2, sharpe_ratio))
     plt.show();
+
+def kalman_train_optimize(r1=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],r2=[1,2,3,4,5]):
+    r1_r2=list(product(r1,r2))
+    for r1,r2 in r1_r2:
+        kalman_train_performance(r1,r2)
+
 def main():
 
     #VWAP(df)
@@ -242,5 +259,6 @@ def main():
     #Cross_MA(df,15,25)
     #SMA_train_performace(df,20,50)
     #SMA_train_Optimize()
-    kalman_train_performance()
+    #kalman_train_performance()
+    kalman_train_optimize()
 main()
