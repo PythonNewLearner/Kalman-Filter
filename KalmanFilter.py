@@ -127,7 +127,7 @@ def arima():
     print('predict', predicts)
 
 # kalman filter part
-def kalman_filter(data,a=1,b=0,c=1,q=0.01,r=1,x=300,p=1):   # try to control r
+def kalman_filter(data,a=1,b=0,c=1,q=0.01,r=1,x=200,p=1):   # try to control r
     filter = KalmanFilter(a, b, c, x, p, q, r)
     predictions = []
     estimate = []
@@ -192,6 +192,18 @@ def rsi(df,rsi_period=20):
     ax2.title.set_text('RSI')
     plt.show();
 
+def Volume_train():
+    train, test = df.iloc[:size, :], df.iloc[size:, :]
+    fig = plt.figure(figsize=(12, 10))
+    ax1 = fig.add_subplot(211)
+    plt.plot(train['Close'])
+
+    ax2 = fig.add_subplot(212, sharex=ax1)
+    plt.plot(train['Volume'])
+
+    ax1.title.set_text('Price')
+    ax2.title.set_text('Volume')
+    plt.show();
 def Cross_MA(df,window1,window2): # window1<window2
     train, test = df.iloc[:size, :], df.iloc[size:, :]
     train['MA_%.f'%window1]=train['Close'].rolling(window1).mean()
@@ -225,6 +237,9 @@ def SMA_train_Optimize(windows=[10,15,20,25,30,40,50,60]):
     for win1,win2 in win1_win2:
         SMA_train_performace(df,win1,win2)
 
+def SMA_test(df,window1,window2):
+    pass
+
 def kalman_train_performance(r1=0.3,r2=3):
     train, test = df.iloc[:size, :], df.iloc[size:, :]
     train['Return'] = train['Close'].pct_change()
@@ -247,18 +262,43 @@ def kalman_train_performance(r1=0.3,r2=3):
     plt.title('{} Kalman Filter training data \nr1= {:.1f}  r2= {:.1f} \nsharpe ratio: {:.2f}'.format(s,r1,r2, sharpe_ratio))
     plt.show();
 
-def kalman_train_optimize(r1=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],r2=[1,2,3,4,5]):
+def kalman_train_optimize(r1=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],r2=[1,2,3,4,5,6,7,8,9,10]):
     r1_r2=list(product(r1,r2))
     for r1,r2 in r1_r2:
         kalman_train_performance(r1,r2)
 
+def kalman_test(r1,r2):
+    train, test = df.iloc[:size, :], df.iloc[size:, :]
+    test['Return'] = test['Close'].pct_change()
+    predictions1 = kalman_filter(test['Close'].values, r=r1)
+    predictions2 = kalman_filter(test['Close'].values, r=r2)
+    test['kalman_r1'] = np.array(predictions1)
+    test['kalman_r2'] = np.array(predictions2)
+
+    test['kf_long'] = np.where(test['kalman_r1'] > test['kalman_r2'], 1, 0)
+    test['kf_short'] = np.where(test['kalman_r1'] < test['kalman_r2'], -1, 0)
+    test['kf_positions'] = test['kf_long'] + test['kf_short']
+    test['kf_strategy_return'] = test['kf_positions'].shift(1) * test['Return']
+
+    annual_return = test['kf_strategy_return'].mean() * 252
+    annual_std = test['kf_strategy_return'].std() * np.sqrt(252)
+    sharpe_ratio = annual_return / annual_std
+    print('r1:{:.1f} and r2:{:.1f} ~~ Annual return: {:.6f} , Annual std: {:.6f} , Sharpe Ratio: {:.2f}'.
+          format(r1, r2, annual_return, annual_std, sharpe_ratio))
+    ax = test[['Close', 'kalman_r1', 'kalman_r2', 'kf_positions']].plot(figsize=(12, 10), secondary_y=['kf_positions'])
+    plt.title('{} Kalman Filter test data \nr1= {:.1f}  r2= {:.1f} \nsharpe ratio: {:.2f}'.format(s, r1, r2,
+                                                                                                      sharpe_ratio))
+    plt.show();
 def main():
 
     #VWAP(df)
     #rsi(df)
     #Cross_MA(df,15,25)
     #SMA_train_performace(df,20,50)
-    #SMA_train_Optimize()
+    SMA_train_Optimize()
     #kalman_train_performance()
-    kalman_train_optimize()
+    #kalman_train_optimize()
+    #Volume_train()
+    #kalman_train_optimize()
+    #kalman_test(r1=0.3,r2=2)
 main()
