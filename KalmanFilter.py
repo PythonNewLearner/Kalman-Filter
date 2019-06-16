@@ -161,8 +161,8 @@ def sim_kf():
 
     y=pd.Series(y)
     predictions=pd.Series(predictions)
-    df=pd.concat([y,predictions],axis=1,keys=['data','predictions'])
-    df['Moving Average']=df['data'].rolling(5).mean()
+    df=pd.concat([y,predictions],axis=1,keys=['Data','Kalman Filter'])
+    df['Moving Average']=df['Data'].rolling(5).mean()
 
     df.plot(figsize=(12,10))
     plt.show();
