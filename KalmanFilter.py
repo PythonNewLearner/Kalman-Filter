@@ -149,6 +149,24 @@ def kalman_filter(data,a=1,b=0,c=1,q=0.01,r=1,x=200,p=1):   # try to control r
 
     return predictions
 
+def sim_kf():
+    x = np.linspace(0, 10, num=200)
+    y = -2 * x ** 2 + 10* np.random.standard_normal(len(x))
+    filter = KalmanFilter(1, 0, 1, 100, 1, 1, 1)
+    predictions = []
+    for d in y:
+        filter.process(0, d)
+        predictions.append(filter.current_state())
+    predictions = [float(i) for i in predictions]
+
+    y=pd.Series(y)
+    predictions=pd.Series(predictions)
+    df=pd.concat([y,predictions],axis=1,keys=['data','predictions'])
+    df['Moving Average']=df['data'].rolling(5).mean()
+
+    df.plot(figsize=(12,10))
+    plt.show();
+
 def VWAP(df,window=20):
 
     train,test=df.iloc[:size,:],df.iloc[size:,:]
@@ -295,10 +313,11 @@ def main():
     #rsi(df)
     #Cross_MA(df,15,25)
     #SMA_train_performace(df,20,50)
-    SMA_train_Optimize()
+    #SMA_train_Optimize()
     #kalman_train_performance()
     #kalman_train_optimize()
     #Volume_train()
     #kalman_train_optimize()
     #kalman_test(r1=0.3,r2=2)
+    sim_kf()
 main()
