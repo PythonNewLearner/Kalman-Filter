@@ -316,7 +316,7 @@ def main():
     #SMA_train_Optimize()
     #kalman_train_performance()
     #kalman_train_optimize()
-    #Volume_train()
+    Volume_train()
     #kalman_train_optimize()
     #kalman_test(r1=0.3,r2=2)
     sim_kf()
