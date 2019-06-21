@@ -16,7 +16,7 @@ from itertools import combinations,product
 
 start = pd.to_datetime('2014-6-1')
 end = pd.to_datetime('2019-5-25')
-s = 'AMZN'
+s = 'SPY'
 
 df = web.DataReader(s, 'yahoo', start=start, end=end)
 
@@ -307,6 +307,24 @@ def kalman_test(r1,r2):
     plt.title('{} Kalman Filter test data \nr1= {:.1f}  r2= {:.1f} \nsharpe ratio: {:.2f}'.format(s, r1, r2,
                                                                                                       sharpe_ratio))
     plt.show();
+
+def KL_Bolling_train(r1,r2,window=5,std=2):
+    train, test = df.iloc[:size, :], df.iloc[size:, :]
+    train['Return'] = train['Close'].pct_change()
+    predictions1=kalman_filter(train['Close'].values,r=r1)
+    predictions2 = kalman_filter(train['Close'].values, r=r2)
+    train['kalman_r1']=np.array(predictions1)
+    train['kalman_r2'] = np.array(predictions2)
+
+    train['mean']=train['Close'].rolling(window).mean()
+    train['std']=train['Close'].rolling(window).std()
+    train['upper_band']=train['mean']+2*train['std']
+    train['lower_band']=train['mean']-2*train['std']
+
+    train[['Close','kalman_r1','kalman_r2','upper_band','lower_band']].plot(figsize=(12,10))
+    plt.show();
+
+
 def main():
 
     #VWAP(df)
@@ -316,8 +334,9 @@ def main():
     #SMA_train_Optimize()
     #kalman_train_performance()
     #kalman_train_optimize()
-    Volume_train()
+    #Volume_train()
     #kalman_train_optimize()
     #kalman_test(r1=0.3,r2=2)
-    sim_kf()
+    #sim_kf()
+    KL_Bolling_train(0.3,2,10,3)
 main()
