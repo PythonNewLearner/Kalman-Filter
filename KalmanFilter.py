@@ -303,10 +303,17 @@ def kalman_test(r1,r2):
     sharpe_ratio = annual_return / annual_std
     print('r1:{:.1f} and r2:{:.1f} ~~ Annual return: {:.6f} , Annual std: {:.6f} , Sharpe Ratio: {:.2f}'.
           format(r1, r2, annual_return, annual_std, sharpe_ratio))
-    ax = test[['Close', 'kalman_r1', 'kalman_r2', 'kf_positions']].plot(figsize=(12, 10), secondary_y=['kf_positions'])
-    plt.title('{} Kalman Filter test data \nr1= {:.1f}  r2= {:.1f} \nsharpe ratio: {:.2f}'.format(s, r1, r2,
-                                                                                                      sharpe_ratio))
+
+    test['Cum profit']=(test['kf_strategy_return']+1).cumprod()
+
+
+    ax1 = test[['Close', 'kalman_r1', 'kalman_r2', 'kf_positions']].plot(figsize=(12, 10),secondary_y=['kf_positions'])
+    plt.title('{} Kalman Filter test data \nr1= {:.1f}  r2= {:.1f} \nsharpe ratio: {:.2f}'.format(s, r1, r2,sharpe_ratio))
     plt.show();
+
+    test['Cum profit'].plot()
+    plt.show();
+
 
 def KL_Bolling_train(r1,r2,window=5,std=2):
     train, test = df.iloc[:size, :], df.iloc[size:, :]
@@ -318,10 +325,34 @@ def KL_Bolling_train(r1,r2,window=5,std=2):
 
     train['mean']=train['Close'].rolling(window).mean()
     train['std']=train['Close'].rolling(window).std()
-    train['upper_band']=train['mean']+2*train['std']
-    train['lower_band']=train['mean']-2*train['std']
+    train['upper_band']=train['mean']+std*train['std']
+    train['lower_band']=train['mean']-std*train['std']
 
     train[['Close','kalman_r1','kalman_r2','upper_band','lower_band']].plot(figsize=(12,10))
+    plt.show();
+
+def kalman3_train(r1=0.5,r2=1.5,r3=3):
+    train, test = df.iloc[:size, :], df.iloc[size:, :]
+    train['Return'] = train['Close'].pct_change()
+    predictions1=kalman_filter(train['Close'].values,r=r1)
+    predictions2 = kalman_filter(train['Close'].values, r=r2)
+    predictions3 = kalman_filter(train['Close'].values, r=r3)
+    train['kalman_r1']=np.array(predictions1)
+    train['kalman_r2'] = np.array(predictions2)
+    train['kalman_r3'] = np.array(predictions3)
+
+    train['kf_long']=np.where((train['kalman_r1']>train['kalman_r2'])&(train['kalman_r2']>train['kalman_r3']),1,0)
+    train['kf_short']=np.where((train['kalman_r1']<train['kalman_r2'])&(train['kalman_r2']<train['kalman_r3']),-1,0)
+    train['kf_positions']=train['kf_long']+train['kf_short']
+    train['kf_strategy_return'] = train['kf_positions'].shift(1) * train['Return']
+
+    annual_return=train['kf_strategy_return'].mean()*252
+    annual_std=train['kf_strategy_return'].std()*np.sqrt(252)
+    sharpe_ratio=annual_return/annual_std
+    print('r1:{:.1f} and r2:{:.1f} and r3:{:.1f} ~~ Annual return: {:.6f} , Annual std: {:.6f} , Sharpe Ratio: {:.2f}'.
+          format(r1, r2,r3, annual_return, annual_std, sharpe_ratio))
+    ax=train[[ 'Close', 'kalman_r1','kalman_r2','kalman_r3','kf_positions']].plot(figsize=(12, 10), secondary_y=['kf_positions'])
+    plt.title('{} Kalman Filter training data \nr1= {:.1f}  r2= {:.1f}  r3:{:.1f}\nsharpe ratio: {:.2f}'.format(s,r1,r2,r3, sharpe_ratio))
     plt.show();
 
 
@@ -338,5 +369,7 @@ def main():
     #kalman_train_optimize()
     #kalman_test(r1=0.3,r2=2)
     #sim_kf()
-    KL_Bolling_train(0.3,2,10,3)
+    #KL_Bolling_train(0.3,2,20,2)
+    #kalman_monthly()
+    kalman3_train()
 main()
