@@ -8,7 +8,7 @@ import statsmodels.tsa.stattools as ts
 from statsmodels.tsa.arima_model import ARIMA
 from itertools import combinations,product
 
-start = pd.to_datetime('2014-1-1')
+start = pd.to_datetime('2017-1-1')
 end = pd.to_datetime('2019-1-1')
 s = 'SPY'
 
@@ -132,7 +132,7 @@ def buy_hold():
     print("Buy& Hold annual return:",annual_return)
     print("Buy & Hold sharpe ratio:",sharpe_ratio)
 
-def kalman_filter_pred_current(data,a=1,b=0,c=1,q=0.01,r=1,x=200,p=1):   # try to control r
+def kalman_filter_pred_current(data,a=1,b=0,c=1,q=0.01,r=1,x=165,p=1):   # try to control r
     filter = KalmanFilter(a, b, c, x, p, q, r)
     predictions = []
     estimate = []
@@ -154,18 +154,21 @@ def kalman_filter_pred_current(data,a=1,b=0,c=1,q=0.01,r=1,x=200,p=1):   # try t
 
     return predictions,estimate
 
-def kf_pred_current(r):
+def kf_pred_current_train(r):
+    global train, test
+    df = web.DataReader(s, 'yahoo', start=start, end=end)
     train, test = df.iloc[:size, :], df.iloc[size:, :]
-    train['Return'] = train['Close'].pct_change()
-    pred,est=kalman_filter_pred_current(train['Close'].values,r)
-    train['current_prediction']=np.array(pred)
-    train['estimate']=np.array(est)
+    train['Return'] = train['Adj Close'].pct_change()
+    prediction,estimate=kalman_filter_pred_current(train['Adj Close'].values,r)
+    train['estimate']=np.array(estimate)
+    train['current_prediction']=np.array(prediction)
 
 
-    train['kf_long'] = np.where((train['estimate'] > train['current_prediction']), 1, 0)
-    train['kf_short'] = np.where((train['estimate'] < train['current_prediction']) , -1, 0)
+    train['kf_long'] = np.where(train['estimate'] < train['current_prediction'],1,0)
+    train['kf_short'] = np.where(train['estimate'] > train['current_prediction'],-1, 0)
     train['kf_positions'] = train['kf_long'] + train['kf_short']
     train['kf_strategy_return'] = train['kf_positions'].shift(1) * train['Return']
+    print(train[['kf_long','kf_short','kf_positions','estimate','current_prediction','kf_strategy_return','Adj Close']])
 
     annual_return = train['kf_strategy_return'].mean() * 252
     annual_std = train['kf_strategy_return'].std() * np.sqrt(252)
@@ -175,22 +178,29 @@ def kf_pred_current(r):
 
     print(' Annual return: {:.6f} , Annual std: {:.6f} , Sharpe Ratio: {:.2f}'.
           format(annual_return, annual_std, sharpe_ratio))
-    ax=train[[ 'Close','estimate','current_prediction','kf_positions']].plot(figsize=(12, 10), secondary_y=['kf_positions'])
-    plt.title('{} Kalman Filter training data  \nsharpe ratio: {:.2f}'.format(s, sharpe_ratio))
-    plt.show();
-    return sharpe_ratio
 
-def kf_pred_current_optimize(): # to be continued
-    R=np.linspace(0,1,50)
+    return sharpe_ratio,annual_return,annual_std
+
+def kf_pred_current_train_plot(r):
+    sharpe_ratio, annual_return, annual_std=kf_pred_current_train(r)
+    ax=train[['Adj Close','estimate','current_prediction','kf_positions']].plot(figsize=(12, 10), secondary_y=['kf_positions'])
+    plt.title('{} Kalman Filter training data  \nsharpe ratio: {:.2f}'.format(s, sharpe_ratio,annual_return,annual_std))
+    plt.show();
+def kf_pred_current_train_optimize(): # to be continued
+    R=np.linspace(0,10,50)
     print(R)
     SR=[]
     for r in R:
-        SR.append(kf_pred_current(r))
+        sr,annual_ret,annual_std=kf_pred_current_train(r)
+        SR.append(sr)
     SR=np.array(SR)
 
-    f=plt.figure(1,figsize=(12,10))
+    plt.figure(figsize=(12,10))
     plt.plot(SR)
-    f.show()
+    plt.xlabel('Measurement Covariance (R)')
+    plt.ylabel('Sharpe Ratio')
+    plt.xticks(np.arange(0, 50, step=5))
+    plt.show()
 
 def rankc(df, Filter):
     df1 = df[['Adj Close', 'Volume', 'Return']]
@@ -275,3 +285,12 @@ def kalman2_MAs_correlation(df, r, Filter=0.4):
 
     plt.show();
     return (test)
+
+
+
+def main():
+    kf_pred_current_train(r=1)
+    kf_pred_current_train_plot(r=1)
+    #kf_pred_current_train_optimize()
+    #pykalman()
+main()
