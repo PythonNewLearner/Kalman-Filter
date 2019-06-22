@@ -8,7 +8,7 @@ import statsmodels.tsa.stattools as ts
 from statsmodels.tsa.arima_model import ARIMA
 from itertools import combinations,product
 
-start = pd.to_datetime('2016-1-1')
+start = pd.to_datetime('2018-1-1')
 end = pd.to_datetime('2019-1-1')
 s = 'SPY'
 
@@ -308,8 +308,8 @@ def kalman2_MAs_correlation(df, r, Filter=0.4):
 
 
 def main():
-    #kf_pred_current_train(r=1)
-    #kf_pred_current_train_plot(r=1)
+    #kf_pred_current_train(q=0.5)
+    #kf_pred_current_train_plot(q=0.5)
     kf_pred_current_train_optimize()
     #buy_hold()
 
