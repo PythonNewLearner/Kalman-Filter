@@ -59,9 +59,10 @@ class KalmanFilter(object):
         self.current_prob_estimate = (1 - kalman_gain * self.c) * predicted_prob_estimate
 
 
-X = df['Close'].values
+X = df['Adj Close'].values
 size = int(len(X) * 0.6)
 train, test = X[0:size], X[size:len(X)]
+
 
 # acf
 def acf():
@@ -82,7 +83,7 @@ def first_diff():
     global price_diff
     df1 = df.iloc[:size, :]
     df2 = df.iloc[:size, :].shift()
-    price_diff = df1['Close'] - df2['Close']
+    price_diff = df1['Adj Close'] - df2['Adj Close']
     price_diff = price_diff.dropna()
     acf1_diff = acf(price_diff)
     acf1_diff = pd.DataFrame([acf1_diff]).T
@@ -127,7 +128,7 @@ def arima():
     print('predict', predicts)
 
 # kalman filter part
-def kalman_filter(data,a=1,b=0,c=1,q=0.01,r=1,x=200,p=1):   # try to control r
+def kalman_filter(data,a=1,b=0,c=1,q=0.01,r=1,x=185,p=1):   # try to control r
     filter = KalmanFilter(a, b, c, x, p, q, r)
     predictions = []
     estimate = []
@@ -148,6 +149,7 @@ def kalman_filter(data,a=1,b=0,c=1,q=0.01,r=1,x=200,p=1):   # try to control r
     # plt.show();
 
     return predictions
+
 
 def sim_kf():
     x = np.linspace(0, 10, num=200)
@@ -172,21 +174,21 @@ def VWAP(df,window=20):
     train,test=df.iloc[:size,:],df.iloc[size:,:]
 
 
-    train['price_vol']=train['Close']*train['Volume']
+    train['price_vol']=train['Adj Close']*train['Volume']
     train['VWAP']=train['price_vol'].rolling(window).sum()/train['Volume'].rolling(window).sum()
 
-    predictions=kalman_filter(train['Close'].values)
+    predictions=kalman_filter(train['Adj Close'].values)
     train['kalman']=np.array(predictions)
 
 
     # train[['VWAP','Close','kalman']].plot(figsize=(12,10))
     # plt.title('%s Training data'%s)
     # plt.show();
-    return train[['VWAP','Close','kalman']]
+    return train[['VWAP','Adj Close','kalman']]
 
 def rsi(df,rsi_period=20):
     train, test = df.iloc[:size, :], df.iloc[size:, :]
-    chg=train['Close'].diff(1)
+    chg=train['Adj Close'].diff(1)
     gain=chg.mask(chg<0,0)
     loss=chg.mask(chg>0,0)
 
@@ -214,7 +216,7 @@ def Volume_train():
     train, test = df.iloc[:size, :], df.iloc[size:, :]
     fig = plt.figure(figsize=(12, 10))
     ax1 = fig.add_subplot(211)
-    plt.plot(train['Close'])
+    plt.plot(train['Adj Close'])
 
     ax2 = fig.add_subplot(212, sharex=ax1)
     plt.plot(train['Volume'])
@@ -224,8 +226,8 @@ def Volume_train():
     plt.show();
 def Cross_MA(df,window1,window2): # window1<window2
     train, test = df.iloc[:size, :], df.iloc[size:, :]
-    train['MA_%.f'%window1]=train['Close'].rolling(window1).mean()
-    train['MA_%.f' % window2] = train['Close'].rolling(window2).mean()
+    train['MA_%.f'%window1]=train['Adj Close'].rolling(window1).mean()
+    train['MA_%.f' % window2] = train['Adj Close'].rolling(window2).mean()
 
     train[['Close','MA_%.f'%window1,'MA_%.f'%window2]].plot(figsize=(12,10))
     plt.show();
@@ -437,13 +439,158 @@ def buy_hold():
     print("Buy& Hold annual return:",annual_return)
     print("Buy & Hold sharpe ratio:",sharpe_ratio)
 
+def kalman_filter_pred_current(data,a=1,b=0,c=1,q=0.01,r=1,x=200,p=1):   # try to control r
+    filter = KalmanFilter(a, b, c, x, p, q, r)
+    predictions = []
+    estimate = []
+    observe = []
+    for d in data:
+        filter.process(0, d)
+        predictions.append(filter.current_state())
+        estimate.append(filter.predicted_state())
+        observe.append(filter.observe())
+
+    predictions = [float(i) for i in predictions]
+    estimate = [float(i) for i in estimate]
+    observe = [float(i) for i in observe]
+
+    # plt.figure(figsize=(12, 10))
+    # plt.plot(data)
+    # plt.plot(predictions)
+    # plt.show();
+
+    return predictions,estimate
+
+def kf_pred_current(r):
+    train, test = df.iloc[:size, :], df.iloc[size:, :]
+    train['Return'] = train['Close'].pct_change()
+    pred,est=kalman_filter_pred_current(train['Close'].values,r)
+    train['current_prediction']=np.array(pred)
+    train['estimate']=np.array(est)
+
+
+    train['kf_long'] = np.where((train['estimate'] > train['current_prediction']), 1, 0)
+    train['kf_short'] = np.where((train['estimate'] < train['current_prediction']) , -1, 0)
+    train['kf_positions'] = train['kf_long'] + train['kf_short']
+    train['kf_strategy_return'] = train['kf_positions'].shift(1) * train['Return']
+
+    annual_return = train['kf_strategy_return'].mean() * 252
+    annual_std = train['kf_strategy_return'].std() * np.sqrt(252)
+    sharpe_ratio = annual_return / annual_std
+    print("annual return:", annual_return)
+    print("sharpe ratio:", sharpe_ratio)
+
+    print(' Annual return: {:.6f} , Annual std: {:.6f} , Sharpe Ratio: {:.2f}'.
+          format(annual_return, annual_std, sharpe_ratio))
+    ax=train[[ 'Close','estimate','current_prediction','kf_positions']].plot(figsize=(12, 10), secondary_y=['kf_positions'])
+    plt.title('{} Kalman Filter training data  \nsharpe ratio: {:.2f}'.format(s, sharpe_ratio))
+    plt.show();
+    return sharpe_ratio
+def kf_pred_current_optimize():
+    R=np.linspace(0,1,50)
+    print(R)
+    SR=[]
+    for r in R:
+        SR.append(kf_pred_current(r))
+    SR=np.array(SR)
+
+    f=plt.figure(1,figsize=(12,10))
+    plt.plot(SR)
+    f.show()
+
+
+def rankc(df, Filter):
+    df1 = df[['Adj Close', 'Volume', 'Return']]
+    df1.loc[:, 'MA5'] = df1.loc[:, 'Adj Close'].rolling(5).mean()
+    df1.loc[:, 'MA10'] = df1.loc[:, 'Adj Close'].rolling(10).mean()
+    df1.loc[:, 'MA20'] = df1.loc[:, 'Adj Close'].rolling(20).mean()
+    df1.loc[:, 'MA30'] = df1.loc[:, 'Adj Close'].rolling(30).mean()
+    # df1.loc[:,'MA60']=df1.loc[:,'Adj Close'].rolling(60).mean()
+
+    # Calculate rank correlation
+    from scipy.stats import spearmanr
+    df1.loc[:, 'Rank Coefficient'] = np.nan
+    rank = df1.iloc[:, 3:7].rank(axis=1).values
+    for i in range(len(df1.index) - 30):
+        i += 30
+        data1 = [4, 3, 2, 1]
+        coef, p = spearmanr(data1, rank[i])
+        j = df1.index[i]
+        df1.loc[j, 'Rank Coefficient'] = coef
+
+    # position, daily_yield, cum_yield
+
+    # Calculate filter
+    df1['filter'] = abs(df1['Rank Coefficient'].rolling(30).mean())
+    df1['trend position'] = np.nan
+    df1.loc[df1['filter'] >= Filter, 'trend position'] = 1
+    df1.loc[df1['filter'] < Filter, 'trend position'] = 0
+
+    # Calculate return
+    df1['position'] = np.nan
+    df1['position'] = df1['trend position']
+    df1['daily_yield'] = df1['position'].shift(1) * df1['Return']
+    df1['cum_yield'] = (1 + df1['daily_yield']).cumprod()
+
+    return (df1['trend position'], df1, Filter)  # return series and dataframe
+
+
+def kalman2_MAs_correlation(df, r1, r2, Filter=0.4):
+    train, test = df.iloc[:size, :], df.iloc[size:, :]
+    train['Return'] = train['Adj Close'].pct_change()
+    predictions1 = kalman_filter(train['Adj Close'].values, r=r1)
+    predictions2 = kalman_filter(train['Adj Close'].values, r=r2)
+    train['kalman_r1'] = np.array(predictions1)
+    train['kalman_r2'] = np.array(predictions2)
+
+
+    train['correlation filter'] = rankc(train, Filter)[1]['filter']
+
+    train = train.dropna()
+
+    train['kf_long'] = np.where((train['kalman_r1'] > train['kalman_r2']) & (abs(train['correlation filter']) > cor), 1,
+                                0)
+    train['kf_short'] = np.where((train['kalman_r1'] < train['kalman_r2']) & (abs(train['correlation filter']) > cor),
+                                 -1, 0)
+    train['kf_positions'] = train['kf_long'] + train['kf_short']
+    train['kf_strategy_return'] = train['kf_positions'].shift(1) * train['Return']
+
+    # position, daily_yield, cum_yield
+    train['daily_yield'] = train['kf_strategy_return']
+    train['position'] = train['kf_positions']
+    train['cum_yield'] = (1 + train['daily_yield']).cumprod()
+
+    print(train[['kf_positions', 'correlation filter']])
+    annual_return = train['kf_strategy_return'].mean() * 252
+    annual_std = train['kf_strategy_return'].std() * np.sqrt(252)
+    sharpe_ratio = annual_return / annual_std
+    print("annual return:", annual_return)
+    print("sharpe ratio:", sharpe_ratio)
+
+    print('r1:{:.1f} and r2:{:.1f} ~~ Annual return: {:.6f} , Annual std: {:.6f} , Sharpe Ratio: {:.2f}'.
+          format(r1, r2, annual_return, annual_std, sharpe_ratio))
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(211)
+    ax2 = fig.add_subplot(212)
+
+    train[['Adj Close', 'kalman_r1', 'kalman_r2', 'kf_positions']].plot(figsize=(12, 10), secondary_y=['kf_positions'],
+                                                                        ax=ax1)
+
+    train[['correlation filter']].plot(ax=ax2)
+    ax2.axhline(y=cor, color='r', linestyle='--')
+    plt.title('{} Kalman Filter training data \nr1= {:.1f}  r2= {:.1f} \nsharpe ratio: {:.2f}'.format(s, r1, r2,
+                                                                                                      sharpe_ratio))
+
+    plt.show();
+    return (train)
 
 def main():
 
     #VWAP(df)
     #rsi(df)
     #Cross_MA(df,15,25)
-    #SMA_train_performace(df,20,50)
+    SMA_train_performace(df,20,50)
     #SMA_train_Optimize()
     #kalman_train_performance()
     #kalman_train_optimize()
@@ -455,7 +602,10 @@ def main():
     #kalman_monthly()
     #kalman3_train()
     #kalman2_correlation(0.2,3)
-    kalman2_MAs_correlation(0.1,1)
+    #kalman2_MAs_correlation(0.1,1)
     #buy_hold()
     #kalman2_MAs_train_optimize()
+    kf_pred_current(r=1)
+    #kf_pred_current_optimize()
+
 main()
