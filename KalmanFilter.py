@@ -355,7 +355,7 @@ def kalman3_train(r1=0.5,r2=1.5,r3=3):
     plt.title('{} Kalman Filter training data \nr1= {:.1f}  r2= {:.1f}  r3:{:.1f}\nsharpe ratio: {:.2f}'.format(s,r1,r2,r3, sharpe_ratio))
     plt.show();
 
-def kalman2_correlation(r1,r2,cor=0.2,window=10):  # 2 kalman filter lines & their rolling correlation
+def kalman2_correlation(r1,r2,cor=0.5,window=5):  # 2 kalman filter lines & their rolling correlation
     train, test = df.iloc[:size, :], df.iloc[size:, :]
     train['Return'] = train['Close'].pct_change()
     predictions1=kalman_filter(train['Close'].values,r=r1)
@@ -363,19 +363,65 @@ def kalman2_correlation(r1,r2,cor=0.2,window=10):  # 2 kalman filter lines & the
     train['kalman_r1']=np.array(predictions1)
     train['kalman_r2'] = np.array(predictions2)
 
-    train['correlation']=train['kalman_r1'].rolling(window).corr(train['kalman_r2'])
+    train['correlation']=train['kalman_r1'].rolling(window).corr(train['kalman_r2'].rolling(window))
     train=train.dropna()
 
     train['kf_long'] = np.where((train['kalman_r1'] > train['kalman_r2']) & (abs(train['correlation'])>cor),1, 0)
     train['kf_short'] = np.where((train['kalman_r1'] < train['kalman_r2']) & (abs(train['correlation'])>cor),-1, 0)
     train['kf_positions'] = train['kf_long'] + train['kf_short']
     train['kf_strategy_return'] = train['kf_positions'].shift(1) * train['Return']
-    print(train)
+    print(train[['kf_positions','correlation']])
     annual_return=train['kf_strategy_return'].mean()*252
     annual_std=train['kf_strategy_return'].std()*np.sqrt(252)
     sharpe_ratio=annual_return/annual_std
     print("annual return:",annual_return)
     print("sharpe ratio:",sharpe_ratio)
+
+def kalman2_MAs_correlation(r1,r2,cor=0.08,windows=[5,10,25,30,60]):
+    train, test = df.iloc[:size, :], df.iloc[size:, :]
+    train['Return'] = train['Close'].pct_change()
+    predictions1=kalman_filter(train['Close'].values,r=r1)
+    predictions2 = kalman_filter(train['Close'].values, r=r2)
+    train['kalman_r1']=np.array(predictions1)
+    train['kalman_r2'] = np.array(predictions2)
+
+    max_win=max(windows)
+    n=len(windows)
+    win1_win2 = list(combinations(windows, r=2))
+
+    corr=0
+    for win1,win2 in win1_win2:
+        corr=corr+train['Close'].rolling(win1).mean().rolling(max_win).corr(train['Close'].rolling(win2).mean())
+        #print(win1,win2,cor)
+    train['correlation filter']=corr/max_win
+
+    train = train.dropna()
+
+    train['kf_long'] = np.where((train['kalman_r1'] > train['kalman_r2']) & (abs(train['correlation filter'])>cor),1, 0)
+    train['kf_short'] = np.where((train['kalman_r1'] < train['kalman_r2']) & (abs(train['correlation filter'])>cor),-1, 0)
+    train['kf_positions'] = train['kf_long'] + train['kf_short']
+    train['kf_strategy_return'] = train['kf_positions'].shift(1) * train['Return']
+    print(train[['kf_positions','correlation filter']])
+    annual_return=train['kf_strategy_return'].mean()*252
+    annual_std=train['kf_strategy_return'].std()*np.sqrt(252)
+    sharpe_ratio=annual_return/annual_std
+    print("annual return:",annual_return)
+    print("sharpe ratio:",sharpe_ratio)
+
+    print('r1:{:.1f} and r2:{:.1f} ~~ Annual return: {:.6f} , Annual std: {:.6f} , Sharpe Ratio: {:.2f}'.
+          format(r1, r2, annual_return, annual_std, sharpe_ratio))
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(211)
+    ax2 = fig.add_subplot(212)
+
+    train[[ 'Close', 'kalman_r1','kalman_r2','kf_positions']].plot(figsize=(12, 10), secondary_y=['kf_positions'],ax=ax1)
+
+    train[['correlation filter']].plot(ax=ax2)
+    ax2.axhline(y=cor, color='r', linestyle='--')
+    plt.title('{} Kalman Filter training data \nr1= {:.1f}  r2= {:.1f} \nsharpe ratio: {:.2f}'.format(s,r1,r2, sharpe_ratio))
+
+    plt.show();
 def main():
 
     #VWAP(df)
@@ -392,5 +438,6 @@ def main():
     #KL_Bolling_train(0.3,2,20,2)
     #kalman_monthly()
     #kalman3_train()
-    kalman2_correlation(0.2,3)
+    #kalman2_correlation(0.2,3)
+    kalman2_MAs_correlation(0.5,1)
 main()
