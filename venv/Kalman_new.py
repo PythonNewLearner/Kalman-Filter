@@ -8,7 +8,7 @@ import statsmodels.tsa.stattools as ts
 from statsmodels.tsa.arima_model import ARIMA
 from itertools import combinations,product
 
-start = pd.to_datetime('2014-1-1')
+start = pd.to_datetime('2016-1-1')
 end = pd.to_datetime('2019-1-1')
 s = 'SPY'
 
