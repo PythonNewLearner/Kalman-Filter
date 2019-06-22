@@ -8,7 +8,7 @@ import statsmodels.tsa.stattools as ts
 from statsmodels.tsa.arima_model import ARIMA
 from itertools import combinations,product
 
-start = pd.to_datetime('2017-1-1')
+start = pd.to_datetime('2014-1-1')
 end = pd.to_datetime('2019-1-1')
 s = 'SPY'
 
@@ -58,7 +58,7 @@ size = int(len(X) * 0.6)
 train, test = X[0:size], X[size:len(X)]
 
 # kalman filter part
-def kalman_filter(data,a=1,b=0,c=1,q=0.01,r=1,x=185,p=1):   # try to control r
+def kalman_filter(data,a=1,b=0,c=1,q=0.1,r=1,x=185,p=1):   # try to control r
     filter = KalmanFilter(a, b, c, x, p, q, r)
     predictions = []
     estimate = []
@@ -132,7 +132,7 @@ def buy_hold():
     print("Buy& Hold annual return:",annual_return)
     print("Buy & Hold sharpe ratio:",sharpe_ratio)
 
-def kalman_filter_pred_current(data,a=1,b=0,c=1,q=0.01,r=1,x=165,p=1):   # try to control r
+def kalman_filter_pred_current(data,a=1,b=0,c=1,q=0.1,r=1,x=165,p=1):   # try to control r
     filter = KalmanFilter(a, b, c, x, p, q, r)
     predictions = []
     estimate = []
@@ -154,12 +154,12 @@ def kalman_filter_pred_current(data,a=1,b=0,c=1,q=0.01,r=1,x=165,p=1):   # try t
 
     return predictions,estimate
 
-def kf_pred_current_train(r):
+def kf_pred_current_train(q):
     global train, test
     df = web.DataReader(s, 'yahoo', start=start, end=end)
     train, test = df.iloc[:size, :], df.iloc[size:, :]
     train['Return'] = train['Adj Close'].pct_change()
-    prediction,estimate=kalman_filter_pred_current(train['Adj Close'].values,r)
+    prediction,estimate=kalman_filter_pred_current(train['Adj Close'].values,q=q)
     train['estimate']=np.array(estimate)
     train['current_prediction']=np.array(prediction)
 
@@ -181,25 +181,44 @@ def kf_pred_current_train(r):
 
     return sharpe_ratio,annual_return,annual_std
 
-def kf_pred_current_train_plot(r):
-    sharpe_ratio, annual_return, annual_std=kf_pred_current_train(r)
+def kf_pred_current_train_plot(q):
+    sharpe_ratio, annual_return, annual_std=kf_pred_current_train(q=q)
     ax=train[['Adj Close','estimate','current_prediction','kf_positions']].plot(figsize=(12, 10), secondary_y=['kf_positions'])
     plt.title('{} Kalman Filter training data  \nsharpe ratio: {:.2f}'.format(s, sharpe_ratio,annual_return,annual_std))
     plt.show();
 def kf_pred_current_train_optimize(): # to be continued
-    R=np.linspace(0,10,50)
-    print(R)
+    Q=np.arange(0, 20, step=0.5)
+    print(Q)
     SR=[]
-    for r in R:
-        sr,annual_ret,annual_std=kf_pred_current_train(r)
+    for q in Q:
+        print("Process Covariance(Q): ",q)
+        sr,annual_ret,annual_std=kf_pred_current_train(q=q)
         SR.append(sr)
-    SR=np.array(SR)
+    #SR=np.array(SR)
 
-    plt.figure(figsize=(12,10))
-    plt.plot(SR)
-    plt.xlabel('Measurement Covariance (R)')
+    # plt.figure(figsize=(12,10))
+    # plt.plot(Q,SR)
+    # plt.xlabel('Process Covariance (Q)')
+    # plt.ylabel('Sharpe Ratio')
+    # #plt.xticks(Q)
+    # plt.show()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    line, = ax.plot(Q, SR)
+
+    ymax = max(SR)
+    xpos = SR.index(ymax)
+    xmax = Q[xpos]
+
+    text = "Q={:.3f}, Sharpe Ratio={:.3f}".format(xmax, ymax)
+
+    ax.annotate(text, xy=(xmax, ymax), xytext=(xmax, ymax),
+                arrowprops=dict(facecolor='black', shrink=0.05),
+                )
+    plt.xlabel('Process Covariace(Q) ')
     plt.ylabel('Sharpe Ratio')
-    plt.xticks(np.arange(0, 50, step=5))
+    ax.set_xlim(0, 20)
     plt.show()
 
 def rankc(df, Filter):
@@ -289,8 +308,9 @@ def kalman2_MAs_correlation(df, r, Filter=0.4):
 
 
 def main():
-    kf_pred_current_train(r=1)
-    kf_pred_current_train_plot(r=1)
-    #kf_pred_current_train_optimize()
-    #pykalman()
+    #kf_pred_current_train(r=1)
+    #kf_pred_current_train_plot(r=1)
+    kf_pred_current_train_optimize()
+    #buy_hold()
+
 main()
