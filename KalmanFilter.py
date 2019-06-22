@@ -14,8 +14,8 @@ import statsmodels.tsa.stattools as ts
 from statsmodels.tsa.arima_model import ARIMA
 from itertools import combinations,product
 
-start = pd.to_datetime('2014-6-1')
-end = pd.to_datetime('2019-5-25')
+start = pd.to_datetime('2014-1-1')
+end = pd.to_datetime('2019-1-1')
 s = 'SPY'
 
 df = web.DataReader(s, 'yahoo', start=start, end=end)
@@ -377,7 +377,7 @@ def kalman2_correlation(r1,r2,cor=0.5,window=5):  # 2 kalman filter lines & thei
     print("annual return:",annual_return)
     print("sharpe ratio:",sharpe_ratio)
 
-def kalman2_MAs_correlation(r1,r2,cor=0.08,windows=[5,10,25,30,60]):
+def kalman2_MAs_correlation(r1,r2,cor=0.1,windows=[5,10,20,30,60]):
     train, test = df.iloc[:size, :], df.iloc[size:, :]
     train['Return'] = train['Close'].pct_change()
     predictions1=kalman_filter(train['Close'].values,r=r1)
@@ -386,7 +386,7 @@ def kalman2_MAs_correlation(r1,r2,cor=0.08,windows=[5,10,25,30,60]):
     train['kalman_r2'] = np.array(predictions2)
 
     max_win=max(windows)
-    n=len(windows)
+
     win1_win2 = list(combinations(windows, r=2))
 
     corr=0
@@ -394,7 +394,7 @@ def kalman2_MAs_correlation(r1,r2,cor=0.08,windows=[5,10,25,30,60]):
         corr=corr+train['Close'].rolling(win1).mean().rolling(max_win).corr(train['Close'].rolling(win2).mean())
         #print(win1,win2,cor)
     train['correlation filter']=corr/max_win
-
+    print(win1_win2)
     train = train.dropna()
 
     train['kf_long'] = np.where((train['kalman_r1'] > train['kalman_r2']) & (abs(train['correlation filter'])>cor),1, 0)
@@ -410,7 +410,7 @@ def kalman2_MAs_correlation(r1,r2,cor=0.08,windows=[5,10,25,30,60]):
 
     print('r1:{:.1f} and r2:{:.1f} ~~ Annual return: {:.6f} , Annual std: {:.6f} , Sharpe Ratio: {:.2f}'.
           format(r1, r2, annual_return, annual_std, sharpe_ratio))
-
+    #plot
     fig = plt.figure()
     ax1 = fig.add_subplot(211)
     ax2 = fig.add_subplot(212)
@@ -422,6 +422,22 @@ def kalman2_MAs_correlation(r1,r2,cor=0.08,windows=[5,10,25,30,60]):
     plt.title('{} Kalman Filter training data \nr1= {:.1f}  r2= {:.1f} \nsharpe ratio: {:.2f}'.format(s,r1,r2, sharpe_ratio))
 
     plt.show();
+
+def kalman2_MAs_train_optimize(r1=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],r2=[1,2,3,4,5,6,7,8,9,10]):
+    r1_r2=list(product(r1,r2))
+    for r1,r2 in r1_r2:
+        kalman2_MAs_correlation(r1,r2)
+
+def buy_hold():
+    train, test = df.iloc[:size, :], df.iloc[size:, :]
+    train['Return'] = train['Close'].pct_change()
+    annual_return=train['Return'].mean()*252
+    annual_std=train['Return'].std()*np.sqrt(252)
+    sharpe_ratio=annual_return/annual_std
+    print("Buy& Hold annual return:",annual_return)
+    print("Buy & Hold sharpe ratio:",sharpe_ratio)
+
+
 def main():
 
     #VWAP(df)
@@ -439,5 +455,7 @@ def main():
     #kalman_monthly()
     #kalman3_train()
     #kalman2_correlation(0.2,3)
-    kalman2_MAs_correlation(0.5,1)
+    kalman2_MAs_correlation(0.1,1)
+    #buy_hold()
+    #kalman2_MAs_train_optimize()
 main()
